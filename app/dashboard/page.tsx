@@ -46,6 +46,8 @@ export default function DashboardPage() {
 
   const [showAddUser, setShowAddUser] = useState(false);
   const [showResetPw, setShowResetPw] = useState<string | null>(null);
+  const [showEditUser, setShowEditUser] = useState<string | null>(null);
+  const [editData, setEditData] = useState({ name: '', role: '', branchId: '' });
   const [newUser, setNewUser] = useState({ username: '', password: '', name: '', role: 'manager', branchId: '' });
   const [resetPw, setResetPw] = useState('');
   const [msg, setMsg] = useState('');
@@ -126,6 +128,29 @@ export default function DashboardPage() {
       body: JSON.stringify({ action: 'delete', id }),
     });
     loadUsers();
+  };
+
+  const openEditUser = (u: DBUser) => {
+    setEditData({ name: u.name, role: u.role, branchId: u.branch_id || '' });
+    setShowEditUser(u.id);
+    setMsg('');
+  };
+
+  const updateUser = async () => {
+    if (!showEditUser || !editData.name) { setMsg('이름을 입력하세요.'); return; }
+    const res = await fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'update', id: showEditUser, name: editData.name, role: editData.role, branchId: editData.branchId || null }),
+    });
+    if (res.ok) {
+      setShowEditUser(null);
+      setMsg('');
+      loadUsers();
+    } else {
+      const data = await res.json();
+      setMsg(data.error || '수정 실패');
+    }
   };
 
   const resetPassword = async (id: string) => {
@@ -323,6 +348,8 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                      <button onClick={() => openEditUser(u)}
+                        style={{ background: '#1e1b4b', border: '1px solid #6366f133', color: '#818cf8', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 12 }}>✏️ 편집</button>
                       <button onClick={() => { setShowResetPw(u.id); setResetPw(''); setMsg(''); }}
                         style={{ background: '#334155', border: 'none', color: '#94a3b8', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 12 }}>🔑 비밀번호</button>
                       {u.username !== 'admin' && (
@@ -351,6 +378,46 @@ export default function DashboardPage() {
                   <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
                     <button onClick={() => resetPassword(showResetPw)} style={{ background: '#6366f1', border: 'none', color: '#fff', borderRadius: 8, padding: '10px 20px', cursor: 'pointer', fontWeight: 700, fontSize: 14, flex: 1 }}>변경</button>
                     <button onClick={() => setShowResetPw(null)} style={{ background: '#334155', border: 'none', color: '#94a3b8', borderRadius: 8, padding: '10px 20px', cursor: 'pointer', fontSize: 14 }}>취소</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Edit User Modal */}
+            {showEditUser && (
+              <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                onClick={() => setShowEditUser(null)}>
+                <div style={{ background: '#1e293b', borderRadius: 16, padding: '24px', width: 420, border: '1px solid #334155' }}
+                  onClick={e => e.stopPropagation()}>
+                  <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 16 }}>✏️ 유저 편집</div>
+                  <div style={{ color: '#94a3b8', fontSize: 13, marginBottom: 16 }}>
+                    {users.find(u => u.id === showEditUser)?.username}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div>
+                      <div style={{ color: '#94a3b8', fontSize: 12, marginBottom: 4, fontWeight: 600 }}>이름</div>
+                      <input value={editData.name} onChange={e => setEditData({ ...editData, name: e.target.value })} style={inputStyle} />
+                    </div>
+                    <div>
+                      <div style={{ color: '#94a3b8', fontSize: 12, marginBottom: 4, fontWeight: 600 }}>권한</div>
+                      <select value={editData.role} onChange={e => setEditData({ ...editData, role: e.target.value })} style={inputStyle}>
+                        <option value="admin">통합관리자</option>
+                        <option value="manager">지점관리자</option>
+                        <option value="client">클라이언트</option>
+                      </select>
+                    </div>
+                    <div>
+                      <div style={{ color: '#94a3b8', fontSize: 12, marginBottom: 4, fontWeight: 600 }}>소속 지점</div>
+                      <select value={editData.branchId} onChange={e => setEditData({ ...editData, branchId: e.target.value })} style={inputStyle}>
+                        <option value="">없음</option>
+                        {branches.map(b => <option key={b.id} value={b.id}>{b.name} - {b.clinic_name}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  {msg && <div style={{ color: '#ef4444', fontSize: 13, marginTop: 8 }}>{msg}</div>}
+                  <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+                    <button onClick={updateUser} style={{ background: '#6366f1', border: 'none', color: '#fff', borderRadius: 8, padding: '10px 20px', cursor: 'pointer', fontWeight: 700, fontSize: 14, flex: 1 }}>저장</button>
+                    <button onClick={() => setShowEditUser(null)} style={{ background: '#334155', border: 'none', color: '#94a3b8', borderRadius: 8, padding: '10px 20px', cursor: 'pointer', fontSize: 14 }}>취소</button>
                   </div>
                 </div>
               </div>
